@@ -18,6 +18,7 @@ import os
 import pickle
 import re
 from itertools import chain
+from functools import wraps
 
 import h5py
 import numpy as np
@@ -29,6 +30,16 @@ from rqalpha.utils.datetime_func import (convert_date_to_date_int,
 
 START_DATE = 20050104
 END_DATE = 29991231
+
+
+def catch_rqdatac_permission_error(func):
+    @wraps(func)
+    def wrapper_func(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except rqdatac.share.errors.PermissionDenied:
+            print(func, 'error')
+    return wrapper_func
 
 
 def gen_instruments(d):
@@ -327,7 +338,6 @@ class UpdateDayBarTask(DayBarTask):
         return False
 
     def __call__(self, path, fields, **kwargs):
-        need_recreate_h5 = False
         with h5py.File(path, 'r') as h5:
             need_recreate_h5 = not self.h5_has_valid_fields(h5, fields)
         if need_recreate_h5:
