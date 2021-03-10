@@ -390,16 +390,24 @@ def update_bundle(path, create, enable_compression=False, concurrency=1):
 
     rqdatac.reset()
 
+    # gen_file_funcs = (
+    #     gen_instruments, gen_trading_dates, gen_dividends, gen_splits, gen_ex_factor, gen_st_days,
+    #     gen_suspended_days, gen_yield_curve, gen_share_transformation, gen_future_info
+    # )
     gen_file_funcs = (
-        gen_instruments, gen_trading_dates, gen_dividends, gen_splits, gen_ex_factor, gen_st_days,
-        gen_suspended_days, gen_yield_curve, gen_share_transformation, gen_future_info
+        gen_instruments, gen_trading_dates
     )
+
+    finish_list = []
 
     with ProgressedProcessPoolExecutor(
             max_workers=concurrency, initializer=init_rqdatac_with_warnings_catch
     ) as executor:
         # windows上子进程需要执行rqdatac.init, 其他os则需要执行rqdatac.reset; rqdatac.init包含了rqdatac.reset的功能
         for func in gen_file_funcs:
-            executor.submit(GenerateFileTask(func), path)
-        for file, order_book_id, field in day_bar_args:
-            executor.submit(_DayBarTask(order_book_id), os.path.join(path, file), field, **kwargs)
+            fuc = executor.submit(GenerateFileTask(func), path)
+            finish_list.append(fuc)
+        # for file, order_book_id, field in day_bar_args:
+        #     executor.submit(_DayBarTask(order_book_id), os.path.join(path, file), field, **kwargs)
+    print(1)
+    print(2)
