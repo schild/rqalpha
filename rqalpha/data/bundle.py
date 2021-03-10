@@ -17,20 +17,41 @@ import json
 import os
 import pickle
 import re
+from functools import wraps
 from itertools import chain
 
 import h5py
 import numpy as np
+import click
+
 from rqalpha.apis.api_rqdatac import rqdatac
 from rqalpha.utils.concurrent import (ProgressedProcessPoolExecutor,
                                       ProgressedTask)
 from rqalpha.utils.datetime_func import (convert_date_to_date_int,
                                          convert_date_to_int)
+from rqalpha.utils.i18n import gettext as _
 
 START_DATE = 20050104
 END_DATE = 29991231
 
 
+def catch_rqdatac_permission_error(func):
+    @wraps(func)
+    def wrapper_func(*args, **kwargs):
+        try:
+            if func.__name__ == "__call__":
+                yield from func(*args, **kwargs)
+            else:
+                func(*args, **kwargs)
+        except rqdatac.share.errors.PermissionDenied:
+            if func.__name__ == "__call__":
+                return args[1].split('/')[-1]
+            else:
+                return func.__name__
+    return wrapper_func
+
+
+@catch_rqdatac_permission_error
 def gen_instruments(d):
     stocks = sorted(list(rqdatac.all_instruments().order_book_id))
     instruments = [i.__dict__ for i in rqdatac.instruments(stocks)]
@@ -38,6 +59,7 @@ def gen_instruments(d):
         pickle.dump(instruments, out, protocol=2)
 
 
+@catch_rqdatac_permission_error
 def gen_yield_curve(d):
     yield_curve = rqdatac.get_yield_curve(start_date=START_DATE, end_date=datetime.date.today())
     yield_curve.index = [convert_date_to_date_int(d) for d in yield_curve.index]
@@ -46,12 +68,14 @@ def gen_yield_curve(d):
         f.create_dataset('data', data=yield_curve.to_records())
 
 
+@catch_rqdatac_permission_error
 def gen_trading_dates(d):
     dates = rqdatac.get_trading_dates(start_date=START_DATE, end_date='2999-01-01')
     dates = np.array([convert_date_to_date_int(d) for d in dates])
     np.save(os.path.join(d, 'trading_dates.npy'), dates, allow_pickle=False)
 
 
+@catch_rqdatac_permission_error
 def gen_st_days(d):
     from rqdatac.client import get_client
     stocks = rqdatac.all_instruments('CS').order_book_id.tolist()
@@ -62,6 +86,7 @@ def gen_st_days(d):
             h5[order_book_id] = days
 
 
+@catch_rqdatac_permission_error
 def gen_suspended_days(d):
     from rqdatac.client import get_client
     stocks = rqdatac.all_instruments('CS').order_book_id.tolist()
@@ -72,6 +97,7 @@ def gen_suspended_days(d):
             h5[order_book_id] = days
 
 
+@catch_rqdatac_permission_error
 def gen_dividends(d):
     stocks = rqdatac.all_instruments().order_book_id.tolist()
     dividend = rqdatac.get_dividend(stocks)
@@ -85,6 +111,7 @@ def gen_dividends(d):
             h5[order_book_id] = dividend.loc[order_book_id].to_records()
 
 
+@catch_rqdatac_permission_error
 def gen_splits(d):
     stocks = rqdatac.all_instruments().order_book_id.tolist()
     split = rqdatac.get_split(stocks)
@@ -100,6 +127,7 @@ def gen_splits(d):
             h5[order_book_id] = split.loc[order_book_id].to_records()
 
 
+@catch_rqdatac_permission_error
 def gen_ex_factor(d):
     stocks = rqdatac.all_instruments().order_book_id.tolist()
     ex_factor = rqdatac.get_ex_factor(stocks)
@@ -119,6 +147,7 @@ def gen_ex_factor(d):
             h5[order_book_id] = np.concatenate([initial, ex_factor.loc[order_book_id].to_records()])
 
 
+@catch_rqdatac_permission_error
 def gen_share_transformation(d):
     df = rqdatac.get_share_transformation()
     df.drop_duplicates("predecessor", inplace=True)
@@ -131,6 +160,7 @@ def gen_share_transformation(d):
         f.write(df.to_json(orient='index'))
 
 
+@catch_rqdatac_permission_error
 def init_future_info(d):
     all_futures_info = []
     underlying_symbol_list = []
@@ -202,6 +232,7 @@ def init_future_info(d):
         json.dump(all_futures_info, f, separators=(',', ':'), indent=2)
 
 
+@catch_rqdatac_permission_error
 def gen_future_info(d):
     future_info_file = os.path.join(d, 'future_info.json')
     if not os.path.exists(future_info_file):
@@ -280,11 +311,12 @@ FUND_FIELDS = STOCK_FIELDS
 
 class DayBarTask(ProgressedTask):
     def __init__(self, order_book_ids):
-        self._order_book_ids = order_book_ids
+        self._order_book_ids = order_book_ids[:10]
 
     @property
     def total_steps(self):
         # type: () -> int
+        print(len(self._order_book_ids))
         return len(self._order_book_ids)
 
     def __call__(self, path, fields, **kwargs):
@@ -292,9 +324,10 @@ class DayBarTask(ProgressedTask):
 
 
 class GenerateDayBarTask(DayBarTask):
+    # @catch_rqdatac_permission_error
     def __call__(self, path, fields, **kwargs):
         with h5py.File(path, 'w') as h5:
-            i, step = 0, 300
+            i, step = 0, 2
             while True:
                 order_book_ids = self._order_book_ids[i:i + step]
                 df = rqdatac.get_price(order_book_ids, START_DATE, datetime.date.today(), '1d',
@@ -311,6 +344,7 @@ class GenerateDayBarTask(DayBarTask):
                 yield len(order_book_ids)
                 if i >= len(self._order_book_ids):
                     break
+                return path
 
 
 class UpdateDayBarTask(DayBarTask):
@@ -327,14 +361,13 @@ class UpdateDayBarTask(DayBarTask):
         return False
 
     def __call__(self, path, fields, **kwargs):
-        need_recreate_h5 = False
         with h5py.File(path, 'r') as h5:
             need_recreate_h5 = not self.h5_has_valid_fields(h5, fields)
         if need_recreate_h5:
             yield from GenerateDayBarTask(self._order_book_ids)(path, fields, **kwargs)
         else:
             with h5py.File(path, 'a') as h5:
-                for order_book_id in self._order_book_ids:
+                for order_book_id in self._order_book_ids[:3]:
                     if order_book_id in h5:
                         try:
                             start_date = rqdatac.get_next_trading_date(int(h5[order_book_id]['datetime'][-1] // 1000000))
@@ -371,12 +404,18 @@ def init_rqdatac_with_warnings_catch():
         rqdatac.init()
 
 
+BT_BASE_FUNC_SET = set([func.__name__ for func in [gen_instruments, gen_trading_dates, gen_yield_curve]]\
+                    + ["stocks.h5", "indexes.h5", "funds.h5"])
+STOCK_BASE_FUNC_SET = set([func.__name__ for func in [gen_dividends, gen_splits, gen_ex_factor, gen_suspended_days,
+                                                   gen_share_transformation, gen_st_days]] + ["futures.h5"])
+FUTURE_BASE_FUNC_SET = {gen_future_info.__name__}
+
+
 def update_bundle(path, create, enable_compression=False, concurrency=1):
     if create:
         _DayBarTask = GenerateDayBarTask
     else:
         _DayBarTask = UpdateDayBarTask
-
     kwargs = {}
     if enable_compression:
         kwargs['compression'] = 9
@@ -398,16 +437,22 @@ def update_bundle(path, create, enable_compression=False, concurrency=1):
         gen_instruments, gen_trading_dates
     )
 
-    finish_list = []
+    results = []
 
     with ProgressedProcessPoolExecutor(
             max_workers=concurrency, initializer=init_rqdatac_with_warnings_catch
     ) as executor:
         # windows上子进程需要执行rqdatac.init, 其他os则需要执行rqdatac.reset; rqdatac.init包含了rqdatac.reset的功能
-        for func in gen_file_funcs:
-            fuc = executor.submit(GenerateFileTask(func), path)
-            finish_list.append(fuc)
-        # for file, order_book_id, field in day_bar_args:
-        #     executor.submit(_DayBarTask(order_book_id), os.path.join(path, file), field, **kwargs)
-    print(1)
-    print(2)
+        # for func in gen_file_funcs:
+        #     fuc = executor.submit(GenerateFileTask(func), path)
+        for file, order_book_id, field in day_bar_args:
+            res = executor.submit(_DayBarTask(order_book_id), os.path.join(path, file), field, **kwargs)
+            if res.exception():
+                results.append(res.result())
+    results = set(results)
+    if results & BT_BASE_FUNC_SET:
+        click.echo("当前账户缺少更新日线及基础数据所需的必要权限，请联系商务或技术支持")
+    elif results & STOCK_BASE_FUNC_SET:
+        click.echo("更新期货日线及基础数据")
+    elif results & FUTURE_BASE_FUNC_SET:
+        click.echo("更新期货日线及基础数据")
