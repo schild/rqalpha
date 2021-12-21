@@ -24,8 +24,7 @@ def convert_dict_to_json(dict_obj):
 
 
 def convert_json_to_dict(json_str):
-    dict_obj = json.loads(json_str, object_hook=custom_decode)
-    return dict_obj
+    return json.loads(json_str, object_hook=custom_decode)
 
 
 def custom_encode(obj):

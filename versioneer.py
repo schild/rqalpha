@@ -1007,21 +1007,20 @@ def git_get_keywords(versionfile_abs):
     # _version.py.
     keywords = {}
     try:
-        f = open(versionfile_abs, "r")
-        for line in f.readlines():
-            if line.strip().startswith("git_refnames ="):
-                mo = re.search(r'=\s*"(.*)"', line)
-                if mo:
-                    keywords["refnames"] = mo.group(1)
-            if line.strip().startswith("git_full ="):
-                mo = re.search(r'=\s*"(.*)"', line)
-                if mo:
-                    keywords["full"] = mo.group(1)
-            if line.strip().startswith("git_date ="):
-                mo = re.search(r'=\s*"(.*)"', line)
-                if mo:
-                    keywords["date"] = mo.group(1)
-        f.close()
+        with open(versionfile_abs, "r") as f:
+            for line in f.readlines():
+                if line.strip().startswith("git_refnames ="):
+                    mo = re.search(r'=\s*"(.*)"', line)
+                    if mo:
+                        keywords["refnames"] = mo.group(1)
+                if line.strip().startswith("git_full ="):
+                    mo = re.search(r'=\s*"(.*)"', line)
+                    if mo:
+                        keywords["full"] = mo.group(1)
+                if line.strip().startswith("git_date ="):
+                    mo = re.search(r'=\s*"(.*)"', line)
+                    if mo:
+                        keywords["date"] = mo.group(1)
     except EnvironmentError:
         pass
     return keywords
@@ -1046,11 +1045,11 @@ def git_versions_from_keywords(keywords, tag_prefix, verbose):
         if verbose:
             print("keywords are unexpanded, not using")
         raise NotThisMethod("unexpanded keywords, not a git-archive tarball")
-    refs = set([r.strip() for r in refnames.strip("()").split(",")])
+    refs = {r.strip() for r in refnames.strip("()").split(",")}
     # starting in git-1.8.3, tags are listed as "tag: foo-1.0" instead of
     # just "foo-1.0". If we see a "tag: " prefix, prefer those.
     TAG = "tag: "
-    tags = set([r[len(TAG):] for r in refs if r.startswith(TAG)])
+    tags = {r[len(TAG):] for r in refs if r.startswith(TAG)}
     if not tags:
         # Either we're using git < 1.8.3, or there really are no tags. We use
         # a heuristic: assume all version tags have a digit. The old git %d
@@ -1059,7 +1058,7 @@ def git_versions_from_keywords(keywords, tag_prefix, verbose):
         # between branches and tags. By ignoring refnames without digits, we
         # filter out many common branch names like "release" and
         # "stabilization", as well as "HEAD" and "master".
-        tags = set([r for r in refs if re.search(r'\d', r)])
+        tags = {r for r in refs if re.search(r'\d', r)}
         if verbose:
             print("discarding '%s', no digits" % ",".join(refs - tags))
     if verbose:
@@ -1098,10 +1097,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
     expanded, and _version.py hasn't already been rewritten with a short
     version string, meaning we're inside a checked out source tree.
     """
-    GITS = ["git"]
-    if sys.platform == "win32":
-        GITS = ["git.cmd", "git.exe"]
-
+    GITS = ["git.cmd", "git.exe"] if sys.platform == "win32" else ["git"]
     out, rc = run_command(GITS, ["rev-parse", "--git-dir"], cwd=root,
                           hide_stderr=True)
     if rc != 0:
@@ -1124,11 +1120,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
         raise NotThisMethod("'git rev-parse' failed")
     full_out = full_out.strip()
 
-    pieces = {}
-    pieces["long"] = full_out
-    pieces["short"] = full_out[:7]  # maybe improved later
-    pieces["error"] = None
-
+    pieces = {'long': full_out, 'short': full_out[:7], 'error': None}
     # parse describe_out. It will be like TAG-NUM-gHEX[-dirty] or HEX[-dirty]
     # TAG might have hyphens.
     git_describe = describe_out
@@ -1188,9 +1180,7 @@ def do_vcs_install(manifest_in, versionfile_source, ipy):
     For Git, this means creating/changing .gitattributes to mark _version.py
     for export-subst keyword substitution.
     """
-    GITS = ["git"]
-    if sys.platform == "win32":
-        GITS = ["git.cmd", "git.exe"]
+    GITS = ["git.cmd", "git.exe"] if sys.platform == "win32" else ["git"]
     files = [manifest_in, versionfile_source]
     if ipy:
         files.append(ipy)
@@ -1204,18 +1194,18 @@ def do_vcs_install(manifest_in, versionfile_source, ipy):
     files.append(versioneer_file)
     present = False
     try:
-        f = open(".gitattributes", "r")
-        for line in f.readlines():
-            if line.strip().startswith(versionfile_source):
-                if "export-subst" in line.strip().split()[1:]:
+        with open(".gitattributes", "r") as f:
+            for line in f.readlines():
+                if (
+                    line.strip().startswith(versionfile_source)
+                    and "export-subst" in line.strip().split()[1:]
+                ):
                     present = True
-        f.close()
     except EnvironmentError:
         pass
     if not present:
-        f = open(".gitattributes", "a+")
-        f.write("%s export-subst\n" % versionfile_source)
-        f.close()
+        with open(".gitattributes", "a+") as f:
+            f.write("%s export-subst\n" % versionfile_source)
         files.append(".gitattributes")
     run_command(GITS, ["add", "--"] + files)
 
@@ -1229,15 +1219,14 @@ def versions_from_parentdir(parentdir_prefix, root, verbose):
     """
     rootdirs = []
 
-    for i in range(3):
+    for _ in range(3):
         dirname = os.path.basename(root)
         if dirname.startswith(parentdir_prefix):
             return {"version": dirname[len(parentdir_prefix):],
                     "full-revisionid": None,
                     "dirty": False, "error": None, "date": None}
-        else:
-            rootdirs.append(root)
-            root = os.path.dirname(root)  # up a level
+        rootdirs.append(root)
+        root = os.path.dirname(root)  # up a level
 
     if verbose:
         print("Tried directories %s but none started with prefix %s" %
@@ -1312,14 +1301,12 @@ def render_pep440(pieces):
         if pieces["distance"] or pieces["dirty"]:
             rendered += plus_or_dot(pieces)
             rendered += "%d.g%s" % (pieces["distance"], pieces["short"])
-            if pieces["dirty"]:
-                rendered += ".dirty"
     else:
         # exception #1
         rendered = "0+untagged.%d.g%s" % (pieces["distance"],
                                           pieces["short"])
-        if pieces["dirty"]:
-            rendered += ".dirty"
+    if pieces["dirty"]:
+        rendered += ".dirty"
     return rendered
 
 
@@ -1383,45 +1370,35 @@ def render_pep440_ricequant(pieces):
 
     rendered = working
 
-    if tag:
-        # 当前开发系列正式版如果小于最近的tag，那么该tag肯定就是该系列的post版本了
-        # 当前开发版本应该总是大于最近的tag，那么当前到commit必须大于等于最近的commit
-        if parsed_working < parsed_tag:
-            if parsed_working.base_version == parsed_tag.base_version:
-                if not parsed_tag.is_postrelease:
-                    raise Exception("Only post release tag allowed, tag %s" % tag)
-                if parsed_tag._version.post[0] != "post":
-                    raise Exception("Only post release tag allowed, tag %s" % tag)
-                if pieces["distance"] > 0:
-                    rendered += ".post%d" % (parsed_tag._version.post[1] + 1)
-                    rendered += ".dev%d" % (pieces["distance"])
-                elif pieces["distance"] == 0:
-                    rendered += ".post%d" % parsed_tag._version.post[1]
-                if pieces["dirty"]:
-                    rendered += ".dirty"
-            else:
-                raise Exception("Developing version can not go back in time: %s < %s" % (working, tag))
-        # 如果最近的tag是正式版tag，那么就是在开发该系列的.post1
-        elif parsed_working == parsed_tag:
-            if pieces["distance"] > 0:
-                rendered += ".post1.dev%d" % (pieces["distance"])
-            if pieces["dirty"]:
-                rendered += ".dirty"
-        # 如果正在开发到是一个新的系列，那么就从该系列的.dev0开始
-        else:
-            if pieces["distance"] >= 0:
-                rendered += ".dev%d" % (pieces["distance"])
-
-            if pieces["dirty"]:
-                rendered += ".dirty"
-    # 没有最近的tag等价于正在开发到是一个新的系列，那么就从该系列的.dev0开始
+    if (
+        tag
+        and parsed_working < parsed_tag
+        and parsed_working.base_version == parsed_tag.base_version
+    ):
+        if not parsed_tag.is_postrelease:
+            raise Exception("Only post release tag allowed, tag %s" % tag)
+        if parsed_tag._version.post[0] != "post":
+            raise Exception("Only post release tag allowed, tag %s" % tag)
+        if pieces["distance"] > 0:
+            rendered += ".post%d" % (parsed_tag._version.post[1] + 1)
+            rendered += ".dev%d" % (pieces["distance"])
+        elif pieces["distance"] == 0:
+            rendered += ".post%d" % parsed_tag._version.post[1]
+        if pieces["dirty"]:
+            rendered += ".dirty"
+    elif tag and parsed_working < parsed_tag:
+        raise Exception("Developing version can not go back in time: %s < %s" % (working, tag))
+    elif tag and parsed_working == parsed_tag:
+        if pieces["distance"] > 0:
+            rendered += ".post1.dev%d" % (pieces["distance"])
+        if pieces["dirty"]:
+            rendered += ".dirty"
     else:
         if pieces["distance"] >= 0:
-            rendered += ".dev%d" % pieces["distance"]
+            rendered += ".dev%d" % (pieces["distance"])
 
         if pieces["dirty"]:
             rendered += ".dirty"
-
     tracking_branch = git_tracking_branch()
     # # 如果是dev和master分支或者hotfix分支来的，或者是一个tag，那就用pep440的版本号，否则带上git commit id
     if tracking_branch in ["origin/develop", "origin/master"] or tracking_branch.startswith("origin/hotfix/") or pieces[
@@ -1443,13 +1420,11 @@ def render_pep440_old(pieces):
         rendered = pieces["closest-tag"]
         if pieces["distance"] or pieces["dirty"]:
             rendered += ".post%d" % pieces["distance"]
-            if pieces["dirty"]:
-                rendered += ".dev0"
     else:
         # exception #1
         rendered = "0.post%d" % pieces["distance"]
-        if pieces["dirty"]:
-            rendered += ".dev0"
+    if pieces["dirty"]:
+        rendered += ".dev0"
     return rendered
 
 
@@ -1998,23 +1973,21 @@ def next_tag_name():
         # 如果发现当前commit和最近的tag的commit相同，规定next tag不变. 这也限制只有最近tag后的第一个commit存在，
         # 才会获取到next tag name
         if parsed_working < parsed_tag:
-            if parsed_working.base_version == parsed_tag.base_version:
-                if not parsed_tag.is_postrelease:
-                    raise Exception("Only post release tag allowed, tag %s" % tag)
-                if parsed_tag._version.post[0] != "post":
-                    raise Exception("Only post release tag allowed, tag %s" % tag)
-                # 正在开发的版本不可能小于等于最近的tag
-                if parsed_curr_version <= parsed_tag:
-                    raise Exception("Current version %s should > latest tag %s" % (curr_version, tag))
-                if pieces["distance"] == 0:
-                    return tag
-
-                rendered += ".post%d" % parsed_curr_version._version.post[1]
-            else:
+            if parsed_working.base_version != parsed_tag.base_version:
                 raise Exception(
                     "Developing version can not go back in time: %s(working version series) < %s(latest tag)" % working,
                     tag)
-        # 如果当前开发系列的正式版等于最近的tag，那么下一个tag必定是.post1
+            if not parsed_tag.is_postrelease:
+                raise Exception("Only post release tag allowed, tag %s" % tag)
+            if parsed_tag._version.post[0] != "post":
+                raise Exception("Only post release tag allowed, tag %s" % tag)
+            # 正在开发的版本不可能小于等于最近的tag
+            if parsed_curr_version <= parsed_tag:
+                raise Exception("Current version %s should > latest tag %s" % (curr_version, tag))
+            if pieces["distance"] == 0:
+                return tag
+
+            rendered += ".post%d" % parsed_curr_version._version.post[1]
         elif parsed_working == parsed_tag:
             if parsed_curr_version._version.post[0] != "post":
                 raise Exception("Current version should be a post version %s" % curr_version)
@@ -2042,9 +2015,8 @@ def is_same_package(package_file):
 def _get_package_dir():
     package = None
     for d in os.listdir():
-        if os.path.isdir(d):
-            if "__init__.py" in os.listdir(d):
-                package = d
+        if os.path.isdir(d) and "__init__.py" in os.listdir(d):
+            package = d
     return package
 
 

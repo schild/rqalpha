@@ -30,14 +30,14 @@ def init(context):
 def handle_bar(context, bar_dict):
     context.counter += 1
 
-    # if context.counter == 1:
-    #    return
-    # 获取当前一对合约的仓位情况。如尚未有仓位,则对应持仓量都为0
-    position_a = context.portfolio.positions[context.s1]
-    position_b = context.portfolio.positions[context.s2]
-
     # 当累积满一定数量的bar数据时候,进行交易逻辑的判断
     if context.counter > context.window:
+
+        # if context.counter == 1:
+        #    return
+        # 获取当前一对合约的仓位情况。如尚未有仓位,则对应持仓量都为0
+        position_a = context.portfolio.positions[context.s1]
+        position_b = context.portfolio.positions[context.s2]
 
         # 获取当天历史分钟线价格队列
         price_array_a = history_bars(context.s1, context.window, '1d', 'close')

@@ -211,12 +211,11 @@ class BarObject(PartialBarObject):
         except (ValueError, KeyError):
             if self._instrument.type != 'Future' or Environment.get_instance().config.base.run_type != RUN_TYPE.PAPER_TRADING:
                 raise
-            if self._instrument.underlying_symbol in ['IH', 'IC', 'IF']:
-                order_book_id = self.INDEX_MAP[self._instrument.underlying_symbol]
-                bar = Environment.get_instance().data_proxy.get_bar(order_book_id, None, '1m')
-                return self.close - bar.close
-            else:
+            if self._instrument.underlying_symbol not in ['IH', 'IC', 'IF']:
                 return np.nan
+            order_book_id = self.INDEX_MAP[self._instrument.underlying_symbol]
+            bar = Environment.get_instance().data_proxy.get_bar(order_book_id, None, '1m')
+            return self.close - bar.close
 
     @cached_property
     def settlement(self):
@@ -334,7 +333,7 @@ class BarMap(object):
         return ((o, self.__getitem__(o)) for o in Environment.get_instance().get_universe())
 
     def keys(self):
-        return (o for o in Environment.get_instance().get_universe())
+        return iter(Environment.get_instance().get_universe())
 
     def values(self):
         return (self.__getitem__(o) for o in Environment.get_instance().get_universe())
@@ -371,9 +370,8 @@ class BarMap(object):
                 raise patch_user_exc(KeyError(_(u"id_or_symbols {} does not exist").format(key)))
             if bar is None:
                 return BarObject(instrument, NANDict, self._dt)
-            else:
-                self._cache[order_book_id] = bar
-                return bar
+            self._cache[order_book_id] = bar
+            return bar
 
     @cached_property
     def dt(self):

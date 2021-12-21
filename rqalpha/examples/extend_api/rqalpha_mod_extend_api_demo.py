@@ -50,5 +50,4 @@ class ExtendAPIDemoMod(AbstractMod):
                                         EXECUTION_PHASE.AFTER_TRADING,
                                         EXECUTION_PHASE.SCHEDULED)
         def get_csv_as_df():
-            data = pd.read_csv(self._csv_path)
-            return data
+            return pd.read_csv(self._csv_path)

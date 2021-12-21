@@ -315,7 +315,7 @@ class GenerateDayBarTask(DayBarTask):
 
 class UpdateDayBarTask(DayBarTask):
     def h5_has_valid_fields(self, h5, wanted_fields):
-        obid_gen = (k for k in h5.keys())
+        obid_gen = iter(h5.keys())
         wanted_fields = set(wanted_fields)
         wanted_fields.add('datetime')
         try:
@@ -387,11 +387,7 @@ def init_rqdatac_with_warnings_catch():
 
 
 def update_bundle(path, create, enable_compression=False, concurrency=1):
-    if create:
-        _DayBarTask = GenerateDayBarTask
-    else:
-        _DayBarTask = UpdateDayBarTask
-
+    _DayBarTask = GenerateDayBarTask if create else UpdateDayBarTask
     kwargs = {}
     if enable_compression:
         kwargs['compression'] = 9

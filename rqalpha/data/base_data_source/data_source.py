@@ -178,13 +178,11 @@ class BaseDataSource(AbstractDataSource):
         return self._share_transformation.get_share_transformation(order_book_id)
 
     def is_suspended(self, order_book_id, dates):
-        # type: (str, Sequence[DateLike]) -> List[bool]
         for date_set in self._suspend_days:
             result = date_set.contains(order_book_id, dates)
             if result is not None:
                 return result
-        else:
-            return [False] * len(dates)
+        return [False] * len(dates)
 
     def is_st_stock(self, order_book_id, dates):
         result = self._st_stock_days.contains(order_book_id, dates)
@@ -235,10 +233,7 @@ class BaseDataSource(AbstractDataSource):
             return True
         if isinstance(fields, six.string_types):
             return fields in valid_fields
-        for field in fields:
-            if field not in valid_fields:
-                return False
-        return True
+        return all(field in valid_fields for field in fields)
 
     def get_ex_cum_factor(self, order_book_id):
         return self._ex_cum_factor.get_factors(order_book_id)
@@ -272,7 +267,7 @@ class BaseDataSource(AbstractDataSource):
                      skip_suspended=True, include_now=False,
                      adjust_type='pre', adjust_orig=None):
 
-        if frequency != '1d' and frequency != '1w':
+        if frequency not in ['1d', '1w']:
             raise NotImplementedError
 
         if skip_suspended and instrument.type == 'CS':
@@ -342,7 +337,10 @@ class BaseDataSource(AbstractDataSource):
         # FIXME
         from rqalpha.const import DEFAULT_ACCOUNT_TYPE
         accounts = Environment.get_instance().config.base.accounts
-        if not (DEFAULT_ACCOUNT_TYPE.STOCK in accounts or DEFAULT_ACCOUNT_TYPE.FUTURE in accounts):
+        if (
+            DEFAULT_ACCOUNT_TYPE.STOCK not in accounts
+            and DEFAULT_ACCOUNT_TYPE.FUTURE not in accounts
+        ):
             return date.min, date.max
         if frequency in ['tick', '1d']:
             s, e = self._day_bars[INSTRUMENT_TYPE.INDX].get_date_range('000001.XSHG')

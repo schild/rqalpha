@@ -50,13 +50,12 @@ class SimulationMod(AbstractMod):
                 MATCHING_TYPE.COUNTERPARTY_OFFER,
             ]:
                 raise RuntimeError(_("Not supported matching type {}").format(mod_config.matching_type))
-        else:
-            if mod_config.matching_type not in [
+        elif mod_config.matching_type not in [
                 MATCHING_TYPE.NEXT_BAR_OPEN,
                 MATCHING_TYPE.VWAP,
                 MATCHING_TYPE.CURRENT_BAR_CLOSE,
             ]:
-                raise RuntimeError(_("Not supported matching type {}").format(mod_config.matching_type))
+            raise RuntimeError(_("Not supported matching type {}").format(mod_config.matching_type))
 
         if env.config.base.frequency == "1d" and mod_config.matching_type == MATCHING_TYPE.NEXT_BAR_OPEN:
             mod_config.matching_type = MATCHING_TYPE.CURRENT_BAR_CLOSE

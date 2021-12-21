@@ -342,10 +342,9 @@ class Account:
             ).apply_trade(trade) + self._get_or_create_pos(
                 order_book_id, POSITION_DIRECTION.SHORT
             ).apply_trade(trade)
-            self._total_cash += delta_cash
         else:
             delta_cash = self._get_or_create_pos(order_book_id, trade.position_direction).apply_trade(trade)
-            self._total_cash += delta_cash
+        self._total_cash += delta_cash
         self._backward_trade_set.add(trade.exec_id)
 
     def _iter_pos(self, direction=None):
@@ -393,8 +392,7 @@ class Account:
         """计算账户管理费用"""
         if self._management_fee_rate == 0:
             return 0
-        fee = self._management_fee_calculator_func(self, self._management_fee_rate)
-        return fee
+        return self._management_fee_calculator_func(self, self._management_fee_rate)
 
     def register_management_fee_calculator(self, calculator):
         # type: (Callable[[Account, float], float]) -> None

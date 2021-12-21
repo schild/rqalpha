@@ -47,13 +47,10 @@ def mod(cmd, params):
         from rqalpha.utils.config import get_mod_conf
 
         mod_config = get_mod_conf()
-        table = []
-
-        for mod_name, mod in mod_config['mod'].items():
-            table.append([
+        table = [[
                 mod_name,
                 ("enabled" if mod['enabled'] else "disabled")
-            ])
+            ] for mod_name, mod in mod_config['mod'].items()]
 
         headers = [
             "name",

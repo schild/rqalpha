@@ -57,13 +57,12 @@ class StockTransactionCostDecider(AbstractTransactionCostDecider):
             else:
                 self.commission_map[order_id] = 0
                 return cost_commission - commission
+        elif commission == self.min_commission:
+            self.commission_map[order_id] -= cost_commission
+            return commission
         else:
-            if commission == self.min_commission:
-                self.commission_map[order_id] -= cost_commission
-                return commission
-            else:
-                self.commission_map[order_id] -= cost_commission
-                return 0
+            self.commission_map[order_id] -= cost_commission
+            return 0
 
     def get_trade_tax(self, trade):
         return self._get_tax(trade.order_book_id, trade.side, trade.last_price * trade.last_quantity)
@@ -107,12 +106,11 @@ class CNFutureTransactionCostDecider(AbstractTransactionCostDecider):
                         quantity - close_today_quantity
                 ) * contract_multiplier * info['close_commission_ratio']
                 commission += price * close_today_quantity * contract_multiplier * info['close_commission_today_ratio']
+        elif position_effect == POSITION_EFFECT.OPEN:
+            commission += quantity * info['open_commission_ratio']
         else:
-            if position_effect == POSITION_EFFECT.OPEN:
-                commission += quantity * info['open_commission_ratio']
-            else:
-                commission += (quantity - close_today_quantity) * info['close_commission_ratio']
-                commission += close_today_quantity * info['close_commission_today_ratio']
+            commission += (quantity - close_today_quantity) * info['close_commission_ratio']
+            commission += close_today_quantity * info['close_commission_today_ratio']
         return commission * self.commission_multiplier
 
     def get_trade_commission(self, trade):

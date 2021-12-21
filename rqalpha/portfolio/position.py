@@ -62,15 +62,14 @@ class Position(AbstractPosition, metaclass=PositionMeta):
     __instrument_types__ = []
 
     def __new__(cls, order_book_id, direction, init_quantity=0):
-        if cls == Position:
-            ins_type = Environment.get_instance().data_proxy.instruments(order_book_id).type
-            try:
-                position_cls = POSITION_TYPE_MAP[ins_type]
-            except KeyError:
-                raise NotImplementedError("")
-            return position_cls.__new__(position_cls, order_book_id, direction, init_quantity)
-        else:
+        if cls != Position:
             return object.__new__(cls)
+        ins_type = Environment.get_instance().data_proxy.instruments(order_book_id).type
+        try:
+            position_cls = POSITION_TYPE_MAP[ins_type]
+        except KeyError:
+            raise NotImplementedError("")
+        return position_cls.__new__(position_cls, order_book_id, direction, init_quantity)
 
     def __init__(self, order_book_id, direction, init_quantity=0):
         self._env = Environment.get_instance()
@@ -162,8 +161,8 @@ class Position(AbstractPosition, metaclass=PositionMeta):
         if self._last_price != self._last_price:
             env = Environment.get_instance()
             self._last_price = env.data_proxy.get_last_price(self._order_book_id)
-            if self._last_price != self._last_price:
-                raise RuntimeError(_("last price of position {} is not supposed to be nan").format(self._order_book_id))
+        if self._last_price != self._last_price:
+            raise RuntimeError(_("last price of position {} is not supposed to be nan").format(self._order_book_id))
         return self._last_price
 
     @property

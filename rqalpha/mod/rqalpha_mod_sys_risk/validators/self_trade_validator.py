@@ -27,22 +27,21 @@ class SelfTradeValidator(AbstractFrontendValidator):
         open_orders = [o for o in self._env.get_open_orders(order.order_book_id) if (
                 o.side != order.side and o.position_effect != POSITION_EFFECT.EXERCISE
         )]
-        if len(open_orders) == 0:
+        if not open_orders:
             return True
         reason = _("Create order failed, there are active orders leading to the risk of self-trade: [{}...]")
         if order.type == ORDER_TYPE.MARKET:
             user_system_log.warn(reason.format(open_orders[0]))
             return False
-        if order.side == SIDE.BUY:
-            for open_order in open_orders:
-                if order.price >= open_order.price:
-                    user_system_log.warn(reason.format(open_order))
-                    return False
-        else:
-            for open_order in open_orders:
-                if order.price <= open_order.price:
-                    user_system_log.warn(reason.format(open_order))
-                    return False
+        for open_order in open_orders:
+            if (
+                order.side == SIDE.BUY
+                and order.price >= open_order.price
+                or order.side != SIDE.BUY
+                and order.price <= open_order.price
+            ):
+                user_system_log.warn(reason.format(open_order))
+                return False
 
     def can_cancel_order(self, order, account=None):
         return True

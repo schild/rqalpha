@@ -100,7 +100,10 @@ class DefaultMatcher(AbstractMatcher):
 
     def match(self, account, order, open_auction):
         # type: (Account, Order, bool) -> None
-        if not (order.position_effect in self.SUPPORT_POSITION_EFFECTS and order.side in self.SUPPORT_SIDES):
+        if (
+            order.position_effect not in self.SUPPORT_POSITION_EFFECTS
+            or order.side not in self.SUPPORT_SIDES
+        ):
             raise NotImplementedError
         order_book_id = order.order_book_id
         instrument = self._env.get_instrument(order_book_id)
@@ -287,7 +290,10 @@ class CounterPartyOfferMatcher(DefaultMatcher):
         if matching_price != matching_price:
             return
 
-        if not (order.position_effect in self.SUPPORT_POSITION_EFFECTS and order.side in self.SUPPORT_SIDES):
+        if (
+            order.position_effect not in self.SUPPORT_POSITION_EFFECTS
+            or order.side not in self.SUPPORT_SIDES
+        ):
             raise NotImplementedError
         if order.type == ORDER_TYPE.LIMIT:
             if order.side == SIDE.BUY and order.price < matching_price:
@@ -333,10 +339,9 @@ class CounterPartyOfferMatcher(DefaultMatcher):
                 if self._a_volume[order.order_book_id][0] == 0:
                     self._a_volume[order.order_book_id].pop(0)
                     self._a_price[order.order_book_id].pop(0)
-            else:
-                if self._b_volume[order.order_book_id][0] == 0:
-                    self._b_volume[order.order_book_id].pop(0)
-                    self._b_price[order.order_book_id].pop(0)
+            elif self._b_volume[order.order_book_id][0] == 0:
+                self._b_volume[order.order_book_id].pop(0)
+                self._b_price[order.order_book_id].pop(0)
         except IndexError:
             return
 

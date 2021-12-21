@@ -81,23 +81,25 @@ def _is_ksh(ins):
 
 def _submit_order(ins, amount, side, position_effect, style, quantity, auto_switch_order_value):
     env = Environment.get_instance()
-    if isinstance(style, LimitOrder):
-        if not is_valid_price(style.get_limit_price()):
-            raise RQInvalidArgument(_(u"Limit order price should be positive"))
+    if isinstance(style, LimitOrder) and not is_valid_price(
+        style.get_limit_price()
+    ):
+        raise RQInvalidArgument(_(u"Limit order price should be positive"))
     price = env.data_proxy.get_last_price(ins.order_book_id)
     if not is_valid_price(price):
         user_system_log.warn(
             _(u"Order Creation Failed: [{order_book_id}] No market data").format(order_book_id=ins.order_book_id))
         return
-    round_lot = int(ins.round_lot)
+    if side in [SIDE.BUY, side.SELL] and (
+        side != SIDE.SELL or quantity != abs(amount)
+    ):
+        round_lot = int(ins.round_lot)
 
-    if side in [SIDE.BUY, side.SELL]:
-        if not (side == SIDE.SELL and quantity == abs(amount)):
-            if _is_ksh(ins):
-                # KSH can buy(sell) 201, 202 shares
-                amount = _get_ksh_amount(amount)
-            else:
-                amount = int(Decimal(amount) / Decimal(round_lot)) * round_lot
+        if _is_ksh(ins):
+            # KSH can buy(sell) 201, 202 shares
+            amount = _get_ksh_amount(amount)
+        else:
+            amount = int(Decimal(amount) / Decimal(round_lot)) * round_lot
 
     if amount == 0:
         user_system_log.warn(_(
@@ -324,9 +326,9 @@ def order_target_portfolio(target_portfolio):
                 order_book_id, quantity, SIDE.SELL, MarketOrder(), POSITION_EFFECT.CLOSE
             ))
 
+    round_lot = 100
     for order_book_id, (target_quantity, price) in target_quantities.items():
         ins = assure_instrument(order_book_id)
-        round_lot = 100
         if order_book_id in current_quantities:
             delta_quantity = target_quantity - current_quantities[order_book_id]
         else:
@@ -591,11 +593,7 @@ def sector(code):
         #INIT INFO
         #['002045.XSHE', '603099.XSHG', '002486.XSHE', '002536.XSHE', '300100.XSHE', '600633.XSHG', '002291.XSHE', ..., '600233.XSHG']
     """
-    if isinstance(code, SectorCodeItem):
-        code = code.name
-    else:
-        code = to_sector_name(code)
-
+    code = code.name if isinstance(code, SectorCodeItem) else to_sector_name(code)
     cs_instruments = Environment.get_instance().data_proxy.all_instruments((INSTRUMENT_TYPE.CS,))
     return [i.order_book_id for i in cs_instruments if i.sector_code == code]
 
@@ -664,16 +662,16 @@ def get_dividend(order_book_id, start_date):
 
 def to_industry_code(s):
     for __, v in industry_code.__dict__.items():
-        if isinstance(v, IndustryCodeItem):
-            if v.name == s:
-                return v.code
+        if isinstance(v, IndustryCodeItem) and v.name == s:
+            return v.code
     return s
 
 
 def to_sector_name(s):
     for __, v in sector_code.__dict__.items():
-        if isinstance(v, SectorCodeItem):
-            if v.cn == s or v.en == s or v.name == s:
-                return v.name
+        if isinstance(v, SectorCodeItem) and (
+            v.cn == s or v.en == s or v.name == s
+        ):
+            return v.name
     # not found
     return s

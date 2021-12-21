@@ -49,9 +49,15 @@ class Portfolio(object, metaclass=PropertyReprMeta):
         # type: (Dict[str, float], List[Tuple[str, int]]) -> Portfolio
         self._static_unit_net_value = 1
 
-        account_args = {}
-        for account_type, cash in starting_cash.items():
-            account_args[account_type] = {"type": account_type, "total_cash": cash, "init_positions": {}}
+        account_args = {
+            account_type: {
+                "type": account_type,
+                "total_cash": cash,
+                "init_positions": {},
+            }
+            for account_type, cash in starting_cash.items()
+        }
+
         for order_book_id, quantity in init_positions:
             account_type = self.get_account_type(order_book_id)
             if account_type in account_args:
@@ -289,8 +295,7 @@ class MixedPositions(dict):
         keys = []
         for account in six.itervalues(self._accounts):
             keys += account.positions.keys()
-        for key in sorted(keys):
-            yield key
+        yield from sorted(keys)
 
     def items(self):
         items = merge_dicts(*[account.positions.items() for account in six.itervalues(self._accounts)])

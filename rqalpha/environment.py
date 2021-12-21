@@ -113,18 +113,24 @@ class Environment(object):
     def can_submit_order(self, order):
         instrument_type = self.data_proxy.instruments(order.order_book_id).type
         account = self.portfolio.get_account(order.order_book_id)
-        for v in chain(self._frontend_validators.get(instrument_type, []), self._default_frontend_validators):
-            if not v.can_submit_order(order, account):
-                return False
-        return True
+        return all(
+            v.can_submit_order(order, account)
+            for v in chain(
+                self._frontend_validators.get(instrument_type, []),
+                self._default_frontend_validators,
+            )
+        )
 
     def can_cancel_order(self, order):
         instrument_type = self.data_proxy.instruments(order.order_book_id).type
         account = self.portfolio.get_account(order.order_book_id)
-        for v in chain(self._frontend_validators.get(instrument_type, []), self._default_frontend_validators):
-            if not v.can_cancel_order(order, account):
-                return False
-        return True
+        return all(
+            v.can_cancel_order(order, account)
+            for v in chain(
+                self._frontend_validators.get(instrument_type, []),
+                self._default_frontend_validators,
+            )
+        )
 
     def get_universe(self):
         return self._universe.get()

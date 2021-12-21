@@ -84,7 +84,7 @@ class PriceRatioSlippage(BaseSlippage):
 
 class TickSizeSlippage(BaseSlippage):
     def __init__(self, rate=0.):
-        if 0 <= rate:
+        if rate >= 0:
             self.rate = rate
         else:
             raise patch_user_exc(ValueError(_(u"invalid slippage rate value: value range is greater than 0")))

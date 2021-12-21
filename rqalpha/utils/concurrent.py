@@ -60,11 +60,7 @@ class ProgressedProcessPoolExecutor(ProcessPoolExecutor):
             self._processes[p.pid] = p
 
     def submit(self, fn, *args, **kwargs):
-        if isinstance(fn, ProgressedTask):
-            # noinspection PyUnresolvedReferences
-            self._total_steps += fn.total_steps
-        else:
-            self._total_steps += 1
+        self._total_steps += fn.total_steps if isinstance(fn, ProgressedTask) else 1
         f = super(ProgressedProcessPoolExecutor, self).submit(fn, *args, **kwargs)
         self._futures.append(f)
         return f

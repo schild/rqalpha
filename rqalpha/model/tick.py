@@ -204,11 +204,12 @@ class TickObject(object):
         return np.isnan(self.last)
 
     def __repr__(self):
-        items = []
-        for name in dir(self):
-            if name.startswith("_"):
-                continue
-            items.append((name, getattr(self, name)))
+        items = [
+            (name, getattr(self, name))
+            for name in dir(self)
+            if not name.startswith("_")
+        ]
+
         return "Tick({0})".format(', '.join('{0}: {1}'.format(k, v) for k, v in items))
 
     def __getitem__(self, key):
