@@ -123,8 +123,7 @@ def create_custom_exception(exc_type, exc_val, exc_tb, strategy_filename):
     if filename == strategy_filename:
         error.error_type = EXC_TYPE.USER_EXC
 
-    user_exc = CustomException(error)
-    return user_exc
+    return CustomException(error)
 
 
 def merge_dicts(*dict_args):
@@ -171,10 +170,10 @@ STOCK_TRADING_PERIOD = [
 
 def is_trading(dt, trading_period):
     t = dt.time()
-    for time_range in trading_period:
-        if time_range.start <= t <= time_range.end:
-            return True
-    return False
+    return any(
+        time_range.start <= t <= time_range.end
+        for time_range in trading_period
+    )
 
 
 def unwrapper(func):

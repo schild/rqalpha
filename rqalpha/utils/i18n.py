@@ -38,16 +38,15 @@ class Localization(object):
 
     @classmethod
     def get_trans(cls, lc: Optional[str], trans_dir=None):
-        if lc is not None and "cn" in lc.lower():
-            locales = ["zh_Hans_CN"]
-            try:
-                if trans_dir is None:
-                    trans_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "translations")
-                return translation(domain="messages", localedir=trans_dir, languages=locales,)
-            except Exception as e:
-                system_log.debug(e)
-                return NullTranslations()
-        else:
+        if lc is None or "cn" not in lc.lower():
+            return NullTranslations()
+        locales = ["zh_Hans_CN"]
+        try:
+            if trans_dir is None:
+                trans_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "translations")
+            return translation(domain="messages", localedir=trans_dir, languages=locales,)
+        except Exception as e:
+            system_log.debug(e)
             return NullTranslations()
 
 

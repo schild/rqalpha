@@ -20,8 +20,11 @@ def get_atr_and_unit(atr_array_result, atr_length_result, portfolio_value_result
 
 
 def get_stop_price(first_open_price_result, units_hold_result, atr_result):
-    stop_price = first_open_price_result - 2 * atr_result + (units_hold_result - 1) * 0.5 * atr_result
-    return stop_price
+    return (
+        first_open_price_result
+        - 2 * atr_result
+        + (units_hold_result - 1) * 0.5 * atr_result
+    )
 
 
 def init(context):
@@ -55,12 +58,11 @@ def handle_bar(context, bar_dict):
     minn = get_extreme(high_price, low_price_for_extreme)[1]
     atr = atr_array[-2]
 
-    if context.trading_signal != 'start':
-        if context.units_hold != 0:
-            context.max_add += 0.5 * get_atr_and_unit(atr_array, atr_array.size, portfolio_value)[0]
-    else:
+    if context.trading_signal == 'start':
         context.max_add = bar_dict[context.s].last
 
+    elif context.units_hold != 0:
+        context.max_add += 0.5 * get_atr_and_unit(atr_array, atr_array.size, portfolio_value)[0]
     cur_position = get_position(context.s).quantity
     available_cash = context.portfolio.cash
     market_value = context.portfolio.market_value
@@ -68,18 +70,15 @@ def handle_bar(context, bar_dict):
     if (cur_position > 0 and
             bar_dict[context.s].last < get_stop_price(context.first_open_price, context.units_hold, atr)):
         context.trading_signal = 'stop'
-    else:
-        if cur_position > 0 and bar_dict[context.s].last < minn:
-            context.trading_signal = 'exit'
-        else:
-            if (bar_dict[context.s].last > context.max_add and context.units_hold != 0 and
+    elif cur_position > 0 and bar_dict[context.s].last < minn:
+        context.trading_signal = 'exit'
+    elif (bar_dict[context.s].last > context.max_add and context.units_hold != 0 and
                     context.units_hold < context.units_hold_max and
                     available_cash > bar_dict[context.s].last*context.unit):
-                context.trading_signal = 'entry_add'
-            else:
-                if bar_dict[context.s].last > maxx and context.units_hold == 0:
-                    context.max_add = bar_dict[context.s].last
-                    context.trading_signal = 'entry'
+        context.trading_signal = 'entry_add'
+    elif bar_dict[context.s].last > maxx and context.units_hold == 0:
+        context.max_add = bar_dict[context.s].last
+        context.trading_signal = 'entry'
 
     atr = get_atr_and_unit(atr_array, atr_array.size, portfolio_value)[0]
     if context.trade_day_num % 5 == 0:
@@ -102,14 +101,12 @@ def handle_bar(context, bar_dict):
             order_shares(context.s, context.quantity)
             context.units_hold += 1
 
-        if context.trading_signal == 'stop':
-            if context.units_hold > 0:
-                order_shares(context.s, -context.quantity)
-                context.units_hold -= 1
+        if context.trading_signal == 'stop' and context.units_hold > 0:
+            order_shares(context.s, -context.quantity)
+            context.units_hold -= 1
 
-        if context.trading_signal == 'exit':
-            if cur_position > 0:
-                order_shares(context.s, -cur_position)
-                context.units_hold = 0
+        if context.trading_signal == 'exit' and cur_position > 0:
+            order_shares(context.s, -cur_position)
+            context.units_hold = 0
 
     context.pre_trading_signal = context.trading_signal

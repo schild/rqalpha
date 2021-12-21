@@ -156,8 +156,7 @@ def download(out, total_length, url):
                 if total_length == bar.pos:
                     return True  # Download complete . exit
             except requests.exceptions.RequestException:
-                if i < retry_times - 1:
-                    six.print_(_("\nDownload failed, retry in {} seconds.".format(retry_interval)))
-                    time.sleep(retry_interval)
-                else:
+                if i >= retry_times - 1:
                     raise
+                six.print_(_("\nDownload failed, retry in {} seconds.".format(retry_interval)))
+                time.sleep(retry_interval)

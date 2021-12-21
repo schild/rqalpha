@@ -39,20 +39,19 @@ def import_tests(dir, module):
         if os.path.isdir(file_path):
             if not file.startswith("__"):
                 strategies.update(import_tests(file_path, ".".join((module, file))))
-        else:
-            if file.endswith(".py") and file.startswith("test"):
-                m = import_module(".".join((module, file[:-3])), "tests.api_tests")
-                default_config = m.__dict__.pop("__config__", {})
-                for obj in six.itervalues(m.__dict__):
-                    if hasattr(obj, "__call__") and getattr(obj, "__name__", "").startswith("test"):
-                        strategy_locals = obj()
-                        custom_config = strategy_locals.pop("__config__", {})
-                        config = deepcopy(default_config)
-                        if custom_config:
-                            deep_update(custom_config, config)
-                        strategy_locals["config"] = config
-                        strategy_locals["name"] = obj.__name__
-                        strategies[".".join((module, file[:-3], obj.__name__))] = strategy_locals
+        elif file.endswith(".py") and file.startswith("test"):
+            m = import_module(".".join((module, file[:-3])), "tests.api_tests")
+            default_config = m.__dict__.pop("__config__", {})
+            for obj in six.itervalues(m.__dict__):
+                if hasattr(obj, "__call__") and getattr(obj, "__name__", "").startswith("test"):
+                    strategy_locals = obj()
+                    custom_config = strategy_locals.pop("__config__", {})
+                    config = deepcopy(default_config)
+                    if custom_config:
+                        deep_update(custom_config, config)
+                    strategy_locals["config"] = config
+                    strategy_locals["name"] = obj.__name__
+                    strategies[".".join((module, file[:-3], obj.__name__))] = strategy_locals
     return strategies
 
 

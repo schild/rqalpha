@@ -88,8 +88,7 @@ def patch_system_exc(exc_val, force=False):
 
 
 def get_exc_from_type(exc_val):
-    exc_from_type = getattr(exc_val, EXC_EXT_NAME, const.EXC_TYPE.NOTSET)
-    return exc_from_type
+    return getattr(exc_val, EXC_EXT_NAME, const.EXC_TYPE.NOTSET)
 
 
 def is_system_exc(exc_val):

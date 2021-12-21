@@ -27,8 +27,7 @@ TimeRange = namedtuple('TimeRange', ['start', 'end'])
 
 
 def convert_date_to_date_int(dt):
-    t = dt.year * 10000 + dt.month * 100 + dt.day
-    return t
+    return dt.year * 10000 + dt.month * 100 + dt.day
 
 
 def convert_date_to_int(dt):
@@ -70,8 +69,7 @@ def convert_int_to_datetime(dt_int):
 
 def convert_ms_int_to_datetime(ms_dt_int):
     dt_int, ms_int = divmod(ms_dt_int, 1000)
-    dt = convert_int_to_datetime(dt_int).replace(microsecond=ms_int * 1000)
-    return dt
+    return convert_int_to_datetime(dt_int).replace(microsecond=ms_int * 1000)
 
 
 def convert_date_time_ms_int_to_datetime(date_int, time_int):

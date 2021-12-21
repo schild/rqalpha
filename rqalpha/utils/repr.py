@@ -82,10 +82,7 @@ def properties(inst):
 
 
 def slots(inst):
-    result = {}
-    for slot in inst.__slots__:
-        result[slot] = getattr(inst, slot)
-    return result
+    return {slot: getattr(inst, slot) for slot in inst.__slots__}
 
 
 def iter_properties_of_class(cls):

@@ -54,9 +54,8 @@ class Instrument(metaclass=PropertyReprMeta):
         if "maturity_date" in self.__dict__:
             self.__dict__["maturity_date"] = self._fix_date(dic["maturity_date"], self.DEFAULT_DE_LISTED_DATE)
 
-        if 'contract_multiplier' in dic:
-            if np.isnan(self.contract_multiplier):
-                raise RuntimeError("Contract multiplier of {} is not supposed to be nan".format(self.order_book_id))
+        if 'contract_multiplier' in dic and np.isnan(self.contract_multiplier):
+            raise RuntimeError("Contract multiplier of {} is not supposed to be nan".format(self.order_book_id))
 
     @property
     def order_book_id(self):

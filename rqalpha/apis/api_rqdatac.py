@@ -801,9 +801,8 @@ def get_dominant_future(underlying_symbol, rule=0):
     ret = rqdatac.get_dominant_future(underlying_symbol, dt, dt, rule)
     if isinstance(ret, pd.Series) and ret.size == 1:
         return ret.item()
-    else:
-        user_log.warn(_("\'{0}\' future does not exist").format(underlying_symbol))
-        return None
+    user_log.warn(_("\'{0}\' future does not exist").format(underlying_symbol))
+    return None
 
 
 @export_as_api
@@ -1012,10 +1011,10 @@ def get_financials(query, quarter=None, interval='4q', expect_df=False):
     if quarter is None or quarter > default_quarter:
         quarter = default_quarter
 
-    include_date = False
-    for d in query.column_descriptions:
-        if d['name'] == 'announce_date':
-            include_date = True
+    include_date = any(
+        d['name'] == 'announce_date' for d in query.column_descriptions
+    )
+
     if not include_date:
         query = query.add_column(rqdatac.fundamentals.announce_date)
 
@@ -1029,7 +1028,7 @@ def get_financials(query, quarter=None, interval='4q', expect_df=False):
         if not include_date:
             del result['announce_date']
     else:
-        d = dict()
+        d = {}
         for order_book_id in result.minor_axis:
             df = result.minor_xs(order_book_id)
             df = df[(df.announce_date < int_date) | (pd.isnull(df.announce_date))]
@@ -1114,9 +1113,15 @@ def get_pit_financials_ex(order_book_ids, fields, count, statements='latest'):
         delta_year += 1
     start_quarter = str(y - delta_year) + 'q' + str(start_q)
 
-    result = rqdatac.get_pit_financials_ex(fields=fields, start_quarter=start_quarter, end_quarter=end_quarter,
-        order_book_ids=order_book_ids, statements=statements, market='cn', date=dt)
-    return result
+    return rqdatac.get_pit_financials_ex(
+        fields=fields,
+        start_quarter=start_quarter,
+        end_quarter=end_quarter,
+        order_book_ids=order_book_ids,
+        statements=statements,
+        market='cn',
+        date=dt,
+    )
 
 
 @export_as_api

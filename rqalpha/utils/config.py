@@ -219,7 +219,7 @@ def parse_future_info(future_info):
 def parse_accounts(accounts):
     a = {}
     if isinstance(accounts, tuple):
-        accounts = {account_type: starting_cash for account_type, starting_cash in accounts}
+        accounts = dict(accounts)
 
     for account_type, starting_cash in accounts.items():
         if starting_cash is None:

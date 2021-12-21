@@ -184,18 +184,17 @@ class StockPosition(Position):
         if payable_date != trading_date:
             return 0
         self._dividend_receivable = None
-        if self.dividend_reinvestment:
-            last_price = self.last_price
-            amount = int(Decimal(dividend_value) / Decimal(last_price))
-            round_lot = self._instrument.round_lot
-            amount = int(Decimal(amount) / Decimal(round_lot)) * round_lot
-            if amount > 0:
-                self.apply_trade(Trade.__from_create__(
-                    None, last_price, amount, SIDE.BUY, POSITION_EFFECT.OPEN, self._order_book_id
-                ))
-            return dividend_value - amount * last_price
-        else:
+        if not self.dividend_reinvestment:
             return dividend_value
+        last_price = self.last_price
+        amount = int(Decimal(dividend_value) / Decimal(last_price))
+        round_lot = self._instrument.round_lot
+        amount = int(Decimal(amount) / Decimal(round_lot)) * round_lot
+        if amount > 0:
+            self.apply_trade(Trade.__from_create__(
+                None, last_price, amount, SIDE.BUY, POSITION_EFFECT.OPEN, self._order_book_id
+            ))
+        return dividend_value - amount * last_price
 
     def _handle_split(self, trading_date, data_proxy):
         ratio = data_proxy.get_split_by_ex_date(self._order_book_id, trading_date)

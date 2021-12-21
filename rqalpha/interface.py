@@ -581,10 +581,11 @@ class Persistable(with_metaclass(abc.ABCMeta)):
 
     @classmethod
     def __subclasshook__(cls, C):
-        if cls is Persistable:
-            if (any("get_state" in B.__dict__ for B in C.__mro__) and
-                    any("set_state" in B.__dict__ for B in C.__mro__)):
-                return True
+        if cls is Persistable and (
+            any("get_state" in B.__dict__ for B in C.__mro__)
+            and any("set_state" in B.__dict__ for B in C.__mro__)
+        ):
+            return True
         return NotImplemented
 
 

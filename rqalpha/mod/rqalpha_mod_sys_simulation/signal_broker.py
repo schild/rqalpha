@@ -80,25 +80,24 @@ class SignalBroker(AbstractBroker):
         else:
             deal_price = last_price
 
-        if self._price_limit:
-            if order.position_effect != POSITION_EFFECT.EXERCISE:
-                if order.side == SIDE.BUY and deal_price >= price_board.get_limit_up(order_book_id):
-                    order.mark_rejected(_(
-                        "Order Cancelled: current bar [{order_book_id}] reach the limit_up price."
-                    ).format(order_book_id=order.order_book_id))
-                    self._env.event_bus.publish_event(Event(
-                        EVENT.ORDER_UNSOLICITED_UPDATE, account=account, order=copy(order)
-                    ))
-                    return
+        if self._price_limit and order.position_effect != POSITION_EFFECT.EXERCISE:
+            if order.side == SIDE.BUY and deal_price >= price_board.get_limit_up(order_book_id):
+                order.mark_rejected(_(
+                    "Order Cancelled: current bar [{order_book_id}] reach the limit_up price."
+                ).format(order_book_id=order.order_book_id))
+                self._env.event_bus.publish_event(Event(
+                    EVENT.ORDER_UNSOLICITED_UPDATE, account=account, order=copy(order)
+                ))
+                return
 
-                if order.side == SIDE.SELL and deal_price <= price_board.get_limit_down(order_book_id):
-                    order.mark_rejected(_(
-                        "Order Cancelled: current bar [{order_book_id}] reach the limit_down price."
-                    ).format(order_book_id=order.order_book_id))
-                    self._env.event_bus.publish_event(Event(
-                        EVENT.ORDER_UNSOLICITED_UPDATE, account=account, order=copy(order)
-                    ))
-                    return
+            if order.side == SIDE.SELL and deal_price <= price_board.get_limit_down(order_book_id):
+                order.mark_rejected(_(
+                    "Order Cancelled: current bar [{order_book_id}] reach the limit_down price."
+                ).format(order_book_id=order.order_book_id))
+                self._env.event_bus.publish_event(Event(
+                    EVENT.ORDER_UNSOLICITED_UPDATE, account=account, order=copy(order)
+                ))
+                return
 
         ct_amount = account.calc_close_today_amount(order_book_id, order.quantity, order.position_direction)
         trade_price = self._slippage_decider.get_trade_price(order, deal_price)

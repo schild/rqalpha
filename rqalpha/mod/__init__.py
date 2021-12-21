@@ -29,7 +29,7 @@ from rqalpha.utils import RqAttrDict
 class ModHandler(object):
     def __init__(self):
         self._env = None
-        self._mod_list = list()  # type: typing.List[typing.Tuple[str, RqAttrDict]]
+        self._mod_list = []
         self._mod_dict = OrderedDict()  # type: typing.OrderedDict[str, AbstractMod]
 
     def set_env(self, environment):

@@ -82,9 +82,8 @@ def cal_style(price, style):
 
     if isinstance(price, OrderStyle):
         # 为了 order_xxx('RB1710', 10, MarketOrder()) 这种写法
-        if isinstance(price, LimitOrder):
-            if np.isnan(price.get_limit_price()):
-                raise RQInvalidArgument(_(u"Limit order price should not be nan."))
+        if isinstance(price, LimitOrder) and np.isnan(price.get_limit_price()):
+            raise RQInvalidArgument(_(u"Limit order price should not be nan."))
         return price
 
     if np.isnan(price):
@@ -224,9 +223,10 @@ def update_universe(id_or_symbols):
     """
     if isinstance(id_or_symbols, (six.string_types, Instrument)):
         id_or_symbols = [id_or_symbols]
-    order_book_ids = set(
+    order_book_ids = {
         assure_order_book_id(order_book_id) for order_book_id in id_or_symbols
-    )
+    }
+
     if order_book_ids != Environment.get_instance().get_universe():
         Environment.get_instance().update_universe(order_book_ids)
 
@@ -849,8 +849,7 @@ def symbol(order_book_id, sep=", "):
     if isinstance(order_book_id, six.string_types):
         return "{}[{}]".format(order_book_id, Environment.get_instance().get_instrument(order_book_id).symbol)
     else:
-        s = sep.join(symbol(item) for item in order_book_id)
-        return s
+        return sep.join(symbol(item) for item in order_book_id)
 
 
 @export_as_api

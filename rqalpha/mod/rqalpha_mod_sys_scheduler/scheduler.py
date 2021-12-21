@@ -124,7 +124,7 @@ class Scheduler(object):
                 'invalid time_rule, "before_trading" or int expected, got {}'.format(repr(time_rule))
             ))
 
-        time_rule = time_rule if time_rule else self._minutes_since_midnight(9, 31)
+        time_rule = time_rule or self._minutes_since_midnight(9, 31)
         return lambda: self._should_trigger(time_rule)
 
     @ExecutionContext.enforce_phase(EXECUTION_PHASE.ON_INIT)

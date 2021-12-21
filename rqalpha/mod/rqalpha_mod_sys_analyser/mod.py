@@ -94,12 +94,13 @@ class AnalyserMod(AbstractMod):
         if self._enabled:
             env.event_bus.add_listener(EVENT.POST_SYSTEM_INIT, self._subscribe_events)
 
-            if not mod_config.benchmark:
-                if getattr(env.config.base, "benchmark", None):
-                    user_system_log.warning(
-                        _("config 'base.benchmark' is deprecated, use 'mod.sys_analyser.benchmark' instead")
-                    )
-                    mod_config.benchmark = getattr(env.config.base, "benchmark")
+            if not mod_config.benchmark and getattr(
+                env.config.base, "benchmark", None
+            ):
+                user_system_log.warning(
+                    _("config 'base.benchmark' is deprecated, use 'mod.sys_analyser.benchmark' instead")
+                )
+                mod_config.benchmark = getattr(env.config.base, "benchmark")
             if mod_config.benchmark:
                 self._benchmark = self._parse_benchmark(mod_config.benchmark)
 
@@ -118,7 +119,7 @@ class AnalyserMod(AbstractMod):
             else:
                 daily_return_list.append((bar.close / bar.prev_close - 1.0, benchmark[1]))
             weights += benchmark[1]
-        return sum([daily[0]*daily[1]/weights for daily in daily_return_list])
+        return sum(daily[0]*daily[1]/weights for daily in daily_return_list)
 
     def _subscribe_events(self, _):
         self._env.event_bus.add_listener(EVENT.TRADE, self._collect_trade)

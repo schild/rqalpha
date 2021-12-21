@@ -66,9 +66,8 @@ def max_ddd(arr: array, index: DatetimeIndex) -> IndexRange:
                 in_draw_down = True
                 start = i - 1
 
-    if arr[i] < max_seen:
-        if i - start > ddd:
-            return IndexRange.new(start, i, index)
+    if arr[i] < max_seen and i - start > ddd:
+        return IndexRange.new(start, i, index)
 
     return IndexRange.new(ddd_start, ddd_end, index)
 
